@@ -19,37 +19,48 @@ device = (
 
 filterDf = df[['DATE', 'HourlyDryBulbTemperature']].copy().dropna()
 
-tensors = []
-inputs = pd.to_datetime(filterDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
-tensors.append(torch.tensor(inputs.dt.year.values).to(device))
-tensors.append(torch.tensor(inputs.dt.month.values).to(device))
-tensors.append(torch.tensor(inputs.dt.day.values).to(device))
-tensors.append(torch.tensor(inputs.dt.hour.values).to(device))
-tensors.append(torch.tensor(inputs.dt.hour.values).to(device))
+inputs = []
+dates = pd.to_datetime(filterDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
+for hour in len(dates)
+inputs.append(dates.dt.year)
+inputs.append(dates.dt.month)
+inputs.append(dates.dt.day)
+inputs.append(dates.dt.hour)
 
-layers = [5, 200, 800, 1500, 800, 400, 200, 1]
+print(len(inputs[0]))
+exit()
+layers = [4, 200, 800, 1500, 800, 400, 200, 1]
 
-actualOutputs = [int(temp.replace("s", '')) if isinstance(temp, str) else temp for temp in filterDf['HourlyDryBulbTemperature']]
+actualOutputs = [int(temp.replace("s", '')) if isinstance(temp, str) else temp for temp in
+                 filterDf['HourlyDryBulbTemperature']]
 predictedOutputs = []
 
-tensor_thing = torch.FloatTensor(tensors).to(device)
+tensor_thing = torch.FloatTensor(inputs)
 
 
 class H(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        for f in range(len(layers) - 1):
-            if f != len(layers) - 1:
-                self.input_layer_exe[f] = torch.nn.Linear(
-                    layers[f], layers[f + 1])  # input: x value
+        self.layer1 = torch.nn.Linear(4, 200)
+        self.layer2 = torch.nn.Linear(200, 800)
+        self.layer3 = torch.nn.Linear(800, 1500)
+        self.layer4 = torch.nn.Linear(1500, 800)
+        self.layer5 = torch.nn.Linear(800, 200)
+        self.layer6 = torch.nn.Linear(200, 1)
         self.Activate = torch.nn.ReLU()
-        # self.output_layer_exe = torch.nn.Linear(10, 1)  # output: y value
 
     def forward(self, input):
-        for layer in self.input_layer_exe:
-            input = layer(input)
-            if layer != self.input_layer_exe[len(self.input_layer_exe) - 1]:
-                input = self.Activate(input)
+        input = self.layer1(input)
+        input = self.Activate(input)
+        input = self.layer2(input)
+        input = self.Activate(input)
+        input = self.layer3(input)
+        input = self.Activate(input)
+        input = self.layer4(input)
+        input = self.Activate(input)
+        input = self.layer5(input)
+        input = self.Activate(input)
+        input = self.layer6(input)
         print(input)
         return input
 
