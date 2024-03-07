@@ -4,10 +4,7 @@ import re
 
 df = pd.read_csv('weather.csv')
 
-# newdf = df.drop(columns=null_columns)
-
-# print(df.columns)
-
+LEARN_RATE = 0.00025
 
 device = (
     "cuda"
@@ -17,31 +14,29 @@ device = (
     else "cpu"
 )
 
-filterDf = df[['DATE', 'HourlyDryBulbTemperature']].copy().dropna()
+filterDf = df[['DATE', 'HourlyDryBulbTemperature']].dropna()
 
 inputs = []
 dates = pd.to_datetime(filterDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
-for hour in len(dates)
-inputs.append(dates.dt.year)
-inputs.append(dates.dt.month)
-inputs.append(dates.dt.day)
-inputs.append(dates.dt.hour)
+for date in dates:
+    inputs.append([date.year, date.month,
+                  date.day, date.hour, date.minute])
 
-print(len(inputs[0]))
+# layers = [4, 200, 800, 1500, 800, 400, 200, 1]
+print(filterDf.head(8117))
 exit()
-layers = [4, 200, 800, 1500, 800, 400, 200, 1]
 
-actualOutputs = [int(temp.replace("s", '')) if isinstance(temp, str) else temp for temp in
-                 filterDf['HourlyDryBulbTemperature']]
+actualOutputs = [int(temp.replace("s", '')) if isinstance(
+    temp, str) else temp for temp in filterDf['HourlyDryBulbTemperature']]
 predictedOutputs = []
 
-tensor_thing = torch.FloatTensor(inputs)
+tensor_thing = torch.FloatTensor(inputs).to(device)
 
 
-class H(torch.nn.Module):
+class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = torch.nn.Linear(4, 200)
+        self.layer1 = torch.nn.Linear(5, 200)
         self.layer2 = torch.nn.Linear(200, 800)
         self.layer3 = torch.nn.Linear(800, 1500)
         self.layer4 = torch.nn.Linear(1500, 800)
@@ -61,25 +56,26 @@ class H(torch.nn.Module):
         input = self.layer5(input)
         input = self.Activate(input)
         input = self.layer6(input)
-        print(input)
         return input
 
 
-def costFunction(predicted, expected):
-    difference = predicted - expected
-    return difference * difference
 
+model = Model().to(device)
+loss_function = torch.nn.HuberLoss(reduction = 'mean')
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARN_RATE)
 
-model = H()
-output = model(tensor_thing)
-print(output)
-
-for i in range(0, inputs):
-    inp = torch.FloatTensor(inputs[i])
-    outp = torch.FloatTensor(actualOutputs[i])
+for i in range(len(inputs)):
+    inp = torch.FloatTensor(inputs[i]).to(device)
+    outp = torch.FloatTensor(actualOutputs[i]).to(device)
 
     prediction = model(inp)
-    print('cost: ' + costFunction(prediction, actualOutputs[i]))
+    loss = loss_function(prediction, outp)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    print(f"current loss at day {str(inputs[i][1])}/{str(inputs[i][2])}/{str(inputs[i][0] % 100)} at {str(inputs[i][3])}:{str(inputs[i][4])}, iteration {str(i)}: {str(loss.item())}")
+    if loss.item() < 400:
+        LEARN_RATE = 0.000025
+    elif loss.item() < 40:
+        LEARN_RATE = 0.0000025
 
-# def deriv(x, y):
-#
