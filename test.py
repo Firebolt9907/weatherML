@@ -39,7 +39,7 @@ model = Model()
 model.load_state_dict(torch.load('model.pt', map_location=torch.device(device)))
 model.to(device)
 
-# year, month, day, hour, minute (CAN ONLY BE 15, 35, OR 55),
-inp = torch.FloatTensor([2015, 1, 1, 1, 15]).to(device)
+#                        year, month, day, hour, minute (CAN ONLY BE 15, 35, OR 55),
+inp = torch.FloatTensor([2023,     3,   8,   14,     35]).to(device)
 
-print(model(inp))
+print(model(inp).item())
