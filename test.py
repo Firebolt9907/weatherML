@@ -42,4 +42,4 @@ model.to(device)
 #                        year, month, day, hour, minute (CAN ONLY BE 15, 35, OR 55),
 inp = torch.FloatTensor([2023,     3,   8,   14,     35]).to(device)
 
-print(model(inp).item())
+print(model(inp)[0].item())
