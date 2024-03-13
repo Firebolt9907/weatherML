@@ -4,10 +4,11 @@ import re
 import plotly.graph_objects as go
 
 df = pd.read_csv('filtered.csv')
+og = pd.read_csv('weather.csv')
 
 LEARN_RATE = 0.15
-EPOCHS = 50
-DATA_PER_EPOCH = 500
+EPOCHS = 20  # 20
+DATA_PER_EPOCH = 500  # 500
 new = True
 
 device = (
@@ -39,55 +40,83 @@ class useful:
     def leadZeroes(number):
         return "{:02d}".format(number)
 
+    def removeS(inp):
+        print(inp)
+        return int(re.findall('[-+]?\d+', inp.replace("s", ''))[0]) if isinstance(inp, str) else int(inp)
 
-filterDf = df[['DATE', 'HourlyDryBulbTemperature', 'HourlyDewPointTemperature', 'HourlyRelativeHumidity',
-               'HourlyVisibility', 'HourlyWindDirection', 'HourlyWindSpeed', '1d', '2d', '5d', '10d']
-           ].dropna().iloc[0:].reset_index(
+
+filterDf = df.reset_index(
     drop=True)
 randomDf = filterDf.sample(frac=1).reset_index(
     drop=True).iloc[0:EPOCHS * DATA_PER_EPOCH]
 
-inputs = []
-dates = pd.to_datetime(randomDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
-for date in dates:
-    # dayBefore = df.loc[filterDf['DATE'] == "2014-11-22T07:35:00"]
-    if useful.findRowDataFromTS(date, filterDf).index[0] > 720:
-        # inputs: yyyy, mm, dd, hh, mm, temp from 1d ago, 2d ago, 5d ago, 10d ago
-        inputs.append([date.year, date.month,
-                       date.day, date.hour, date.minute,
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyDryBulbTemperature"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 144][
-                           "HourlyDryBulbTemperature"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 360][
-                           "HourlyDryBulbTemperature"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 720][
-                           "HourlyDryBulbTemperature"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                           "HourlyDewPointTemperature"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyRelativeHumidity"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyVisibility"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindDirection"],
-                       filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindSpeed"],
-                       ])
-    else:
-        print("dropping = " + useful.findRowDataFromTS(date, randomDf)['DATE'])
-        randomDf.drop([useful.findRowDataFromTS(date, randomDf).index[0]])
+inputs = [[]]
+expectedOutputs = [[]]
+# dates = pd.to_datetime(randomDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
+# for date in dates:
+#     # dayBefore = df.loc[filterDf['DATE'] == "2014-11-22T07:35:00"]
+#     if useful.findRowDataFromTS(date, filterDf).index[0] > 720:
+#         # inputs: yyyy, mm, dd, hh, mm, temp from 1d ago, 2d ago, 5d ago, 10d ago
+#         inputs.append([date.year, date.month,
+#                        date.day, date.hour, date.minute,
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyDryBulbTemperature"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 144][
+#                            "HourlyDryBulbTemperature"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 360][
+#                            "HourlyDryBulbTemperature"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 720][
+#                            "HourlyDryBulbTemperature"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+#                            "HourlyDewPointTemperature"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyRelativeHumidity"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyVisibility"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindDirection"],
+#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindSpeed"],
+#                        ])
+#     else:
+#         print("dropping = " + useful.findRowDataFromTS(date, randomDf)['DATE'])
+#         randomDf.drop([useful.findRowDataFromTS(date, randomDf).index[0]])
 
+for i, day in randomDf.iterrows():
+    inputs.append([day['year'], day['month'], day["day"], day["hour"], day["minute"],
+                   useful.removeS(day['1d'][0]),
+                   useful.removeS(day['2d'][0]),
+                   useful.removeS(day['5d'][0]),
+                   useful.removeS(day['10d'][0]),
+                   int(float(day['1dHDPT'])),
+                   int(float(day['1dHRH'])),
+                   int(float(day['1dHV'])),
+                   int(float(day['1dHWS']))
+                   ])
+    temp = og.loc[
+        useful.findRowDataFromInputs(day['year'], day['month'], day["day"], day["hour"], day["minute"], og).index[0]]
+    expectedOutputs.append([useful.removeS(temp['HourlyDryBulbTemperature']),
+                            int(float(temp['HourlyDewPointTemperature'])),
+                            int(float(temp['HourlyRelativeHumidity'])),
+                            int(float(temp['HourlyVisibility'])),
+                            int(float(temp['HourlyWindSpeed']))])
+    # print("input " + str(i) + ": " + day["DATE"])
+
+inputs = inputs[1:]
+expectedOutputs = expectedOutputs[1:]
+print(inputs)
+print(expectedOutputs)
 print("Done filtering")
 
-actualOutputs = [
-    [int(item['HourlyDryBulbTemperature'].replace("s", '')) if isinstance(
-        item['HourlyDryBulbTemperature'], str) else item['HourlyDryBulbTemperature'],
-     item["HourlyDewPointTemperature"],
-     item["HourlyRelativeHumidity"],
-     item["HourlyVisibility"],
-     item["HourlyWindDirection"],
-     item["HourlyWindSpeed"],
-     ] for item in randomDf
-]
+# actualOutputs = [
+#     [int(item['HourlyDryBulbTemperature'].replace("s", '')) if isinstance(
+#         item['HourlyDryBulbTemperature'], str) else item['HourlyDryBulbTemperature'],
+#      item["HourlyDewPointTemperature"],
+#      item["HourlyRelativeHumidity"],
+#      item["HourlyVisibility"],
+#      item["HourlyWindDirection"],
+#      item["HourlyWindSpeed"],
+#      ] for item in randomDf
+# ]
 predictedOutputs = []
 
-tensor_thing = torch.FloatTensor(inputs).to(device)
+output = torch.FloatTensor(expectedOutputs).to(device)
+input = torch.FloatTensor(inputs).to(device)
 
 
 class Model(torch.nn.Module):
@@ -102,7 +131,7 @@ class Model(torch.nn.Module):
         self.layer3d = torch.nn.Linear(3000, 1500)
         self.layer4 = torch.nn.Linear(1500, 800)
         self.layer5 = torch.nn.Linear(800, 200)
-        self.layer6 = torch.nn.Linear(200, 6)
+        self.layer6 = torch.nn.Linear(200, 5)
         self.Activate = torch.nn.ReLU()
 
     def forward(self, input):
@@ -114,10 +143,10 @@ class Model(torch.nn.Module):
         input = self.Activate(input)
         input = self.layer3a(input)
         input = self.Activate(input)
-        input = self.layer3b(input)
-        input = self.Activate(input)
-        input = self.layer3c(input)
-        input = self.Activate(input)
+        # input = self.layer3b(input)
+        # input = self.Activate(input)
+        # input = self.layer3c(input)
+        # input = self.Activate(input)
         input = self.layer3d(input)
         input = self.Activate(input)
         input = self.layer4(input)
@@ -137,9 +166,6 @@ if not new:
 loss_function = torch.nn.MSELoss(reduction='mean')
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARN_RATE)
 
-output = torch.FloatTensor(actualOutputs).to(device)
-input = torch.FloatTensor(inputs).to(device)
-
 loss_graph_figure = go.Figure()
 loss_graph_values = []
 loss_graph_figure.add_scatter(y=loss_graph_values)
@@ -147,6 +173,7 @@ loss_graph_figure.write_html("loss.html")
 
 currentEpoch = 0
 epochLosses = []
+bestLoss = float('inf')
 
 for i in range(len(inputs)):
     if i % DATA_PER_EPOCH == 0 and i != 0:
@@ -163,6 +190,11 @@ for i in range(len(inputs)):
         optimizer.param_groups[0]['lr'] *= 0.95
 
         epochLosses = []
+        if epochAvgLoss < bestLoss:
+            torch.save(model.state_dict(), 'model.pt')
+            bestLoss = epochAvgLoss
+
+
 
     prediction = model(input[i])
     loss = loss_function(prediction, output[i])
@@ -174,4 +206,3 @@ for i in range(len(inputs)):
     # print(
     #     f"current loss at day {str(inputs[i][1])}/{str(inputs[i][2])}/{str(inputs[i][0] % 100)} at {str(inputs[i][3])}:{str(inputs[i][4])}, iteration {str(i)} loss: {str(loss.item())}, predicted: {str(prediction.item())}, actual: {str((output[i].item()))}")
 
-torch.save(model.state_dict(), 'model.pt')
