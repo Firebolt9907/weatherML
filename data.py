@@ -74,7 +74,7 @@ inputs = pd.DataFrame({'DATE': [0, 0], 'year': [0, 0], 'month': [0, 0], 'day': [
                        '1dHWS': [0, 0], "HDBT": [0, 0],
                        'HDPT': [0, 0], 'HRH': [0, 0], 'HV': [0, 0], 'HWS': [0, 0]})
 
-dates = pd.to_datetime(filterDf['DATE'], format='%Y-%m-%dT%H:%M:%S')[1000:1200]
+dates = pd.to_datetime(filterDf['DATE'], format='%Y-%m-%dT%H:%M:%S')[720:]
 
 dp = 0
 for date in dates:
@@ -109,8 +109,8 @@ for date in dates:
                 "HourlyDewPointTemperature"])),  # 1dHDPT
             useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
                 "HourlyRelativeHumidity"]),  # 1dHRH
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                "HourlyVisibility"])),  # 1dHV
+            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+                "HourlyVisibility"]),  # 1dHV
             int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
                 "HourlyWindSpeed"])),  # 1dHWS
             #   EXPECTED OUTPUTS BELOW
@@ -118,7 +118,7 @@ for date in dates:
                                "HourlyDryBulbTemperature"]),  # HDBT
             int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyDewPointTemperature"])),  # HDPT
             useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyRelativeHumidity"]),  # HRH
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyVisibility"])),  # HV
+            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyVisibility"]),  # HV
             int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyWindSpeed"])),  # HWS
         ], dtype="object")
     else:
