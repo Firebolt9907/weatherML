@@ -105,21 +105,21 @@ for date in dates:
                 "HourlyDryBulbTemperature"]),  # 5d
             useful.removeS(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 720][
                 "HourlyDryBulbTemperature"]),  # 10d
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                "HourlyDewPointTemperature"])),  # 1dHDPT
-            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                "HourlyRelativeHumidity"]),  # 1dHRH
-            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                "HourlyVisibility"]),  # 1dHV
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-                "HourlyWindSpeed"])),  # 1dHWS
+            # int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+            #     "HourlyDewPointTemperature"])),  # 1dHDPT
+            # useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+            #     "HourlyRelativeHumidity"]),  # 1dHRH
+            # useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+            #     "HourlyVisibility"]),  # 1dHV
+            # int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
+            #     "HourlyWindSpeed"])),  # 1dHWS
             #   EXPECTED OUTPUTS BELOW
             useful.removeS(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]][
                                "HourlyDryBulbTemperature"]),  # HDBT
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyDewPointTemperature"])),  # HDPT
-            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyRelativeHumidity"]),  # HRH
-            useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyVisibility"]),  # HV
-            int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyWindSpeed"])),  # HWS
+            # int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyDewPointTemperature"])),  # HDPT
+            # useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyRelativeHumidity"]),  # HRH
+            # useful.removeV(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyVisibility"]),  # HV
+            # int(float(filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0]]["HourlyWindSpeed"])),  # HWS
         ], dtype="object")
     else:
         print("dropping = " + useful.findRowDataFromTS(date, filterDf)['DATE'])

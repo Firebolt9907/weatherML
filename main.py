@@ -1,3 +1,5 @@
+import json
+
 import torch
 import pandas as pd
 import re
@@ -6,19 +8,17 @@ import plotly.graph_objects as go
 df = pd.read_csv('filtered.csv')
 og = pd.read_csv('weather.csv')
 
-LEARN_RATE = 0.15
-EPOCHS = 20  # 20
-DATA_PER_EPOCH = 500  # 500
-new = True
+LEARN_RATE = 5e-4 # 2e-3
+EPOCHS = 200  # 20
+DATA_PER_EPOCH = 50  # 500
+new = False
+filter = True
 
 device = (
     "cuda"
     if torch.cuda.is_available()
-    # else "mps"
-    # if torch.backends.mps.is_available()
     else "cpu"
 )
-
 
 class useful:
     def findRowDataFromTS(date, data):
@@ -41,61 +41,50 @@ class useful:
         return "{:02d}".format(number)
 
     def removeS(inp):
-        print(inp)
-        return int(re.findall('[-+]?\d+', inp.replace("s", ''))[0]) if isinstance(inp, str) else int(inp)
+        if isinstance(inp, str):
+            # Remove 's' characters
+            inp = inp.replace("s", '')
+            # Use a regular expression to find a number
+            match = re.search(r'[-+]?\d*\.\d+|[-+]?\d+', inp)
+            if match:
+                # Convert the matched string to a float
+                return float(match.group())
+            else:
+                print(inp)
+                raise ValueError("No valid number found in the input string")
+        else:
+            # If it's not a string, directly convert to float
+            return float(inp)
 
+if filter:
+    filterDf = df.reset_index(
+        drop=True)
+    randomDf = filterDf.sample(frac=1).reset_index(
+        drop=True).iloc[0:EPOCHS * DATA_PER_EPOCH]
 
-filterDf = df.reset_index(
-    drop=True)
-randomDf = filterDf.sample(frac=1).reset_index(
-    drop=True).iloc[0:EPOCHS * DATA_PER_EPOCH]
+    inputs = [[]]
+    expectedOutputs = [[]]
 
-inputs = [[]]
-expectedOutputs = [[]]
-# dates = pd.to_datetime(randomDf['DATE'], format='%Y-%m-%dT%H:%M:%S')
-# for date in dates:
-#     # dayBefore = df.loc[filterDf['DATE'] == "2014-11-22T07:35:00"]
-#     if useful.findRowDataFromTS(date, filterDf).index[0] > 720:
-#         # inputs: yyyy, mm, dd, hh, mm, temp from 1d ago, 2d ago, 5d ago, 10d ago
-#         inputs.append([date.year, date.month,
-#                        date.day, date.hour, date.minute,
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyDryBulbTemperature"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 144][
-#                            "HourlyDryBulbTemperature"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 360][
-#                            "HourlyDryBulbTemperature"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 720][
-#                            "HourlyDryBulbTemperature"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72][
-#                            "HourlyDewPointTemperature"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyRelativeHumidity"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyVisibility"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindDirection"],
-#                        filterDf.loc[useful.findRowDataFromTS(date, filterDf).index[0] - 72]["HourlyWindSpeed"],
-#                        ])
-#     else:
-#         print("dropping = " + useful.findRowDataFromTS(date, randomDf)['DATE'])
-#         randomDf.drop([useful.findRowDataFromTS(date, randomDf).index[0]])
+    for i, day in randomDf.iterrows():
+        if day['1d'] == "-" or day['2d'] == "-" or day['5d'] == "-" or day['10d'] == "-":
+            print("skipping")
+        else:
+            inputs.append([day['year'], day['month'], day["day"], day["hour"], day["minute"],
+                           useful.removeS(day['1d']),
+                           useful.removeS(day['2d']),
+                           useful.removeS(day['5d']),
+                           useful.removeS(day['10d']),
+                           ])
+            temp = og.loc[
+                useful.findRowDataFromInputs(day['year'], day['month'], day["day"], day["hour"], day["minute"], og).index[0]]
+            expectedOutputs.append([useful.removeS(temp['HourlyDryBulbTemperature'])])
 
-for i, day in randomDf.iterrows():
-    inputs.append([day['year'], day['month'], day["day"], day["hour"], day["minute"],
-                   useful.removeS(day['1d'][0]),
-                   useful.removeS(day['2d'][0]),
-                   useful.removeS(day['5d'][0]),
-                   useful.removeS(day['10d'][0]),
-                   int(float(day['1dHDPT'])),
-                   int(float(day['1dHRH'])),
-                   int(float(day['1dHV'])),
-                   int(float(day['1dHWS']))
-                   ])
-    temp = og.loc[
-        useful.findRowDataFromInputs(day['year'], day['month'], day["day"], day["hour"], day["minute"], og).index[0]]
-    expectedOutputs.append([useful.removeS(temp['HourlyDryBulbTemperature']),
-                            int(float(temp['HourlyDewPointTemperature'])),
-                            int(float(temp['HourlyRelativeHumidity'])),
-                            int(float(temp['HourlyVisibility'])),
-                            int(float(temp['HourlyWindSpeed']))])
-    # print("input " + str(i) + ": " + day["DATE"])
+        if i % 500 == 0 and i != 0:
+            print("Epoch " + str(i/50) + " cleaned")
+else:
+    inputs = json.load(open("inputs.json"))["stuff"]
+    expectedOutputs = json.load(open("expectedoutputs.json"))["stuff"]
+
 
 inputs = inputs[1:]
 expectedOutputs = expectedOutputs[1:]
@@ -103,16 +92,6 @@ print(inputs)
 print(expectedOutputs)
 print("Done filtering")
 
-# actualOutputs = [
-#     [int(item['HourlyDryBulbTemperature'].replace("s", '')) if isinstance(
-#         item['HourlyDryBulbTemperature'], str) else item['HourlyDryBulbTemperature'],
-#      item["HourlyDewPointTemperature"],
-#      item["HourlyRelativeHumidity"],
-#      item["HourlyVisibility"],
-#      item["HourlyWindDirection"],
-#      item["HourlyWindSpeed"],
-#      ] for item in randomDf
-# ]
 predictedOutputs = []
 
 output = torch.FloatTensor(expectedOutputs).to(device)
@@ -122,7 +101,7 @@ input = torch.FloatTensor(inputs).to(device)
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = torch.nn.Linear(13, 200)
+        self.layer1 = torch.nn.Linear(9, 200)
         self.layer2 = torch.nn.Linear(200, 800)
         self.layer3 = torch.nn.Linear(800, 1500)
         self.layer3a = torch.nn.Linear(1500, 3000)
@@ -131,7 +110,7 @@ class Model(torch.nn.Module):
         self.layer3d = torch.nn.Linear(3000, 1500)
         self.layer4 = torch.nn.Linear(1500, 800)
         self.layer5 = torch.nn.Linear(800, 200)
-        self.layer6 = torch.nn.Linear(200, 5)
+        self.layer6 = torch.nn.Linear(200, 1)
         self.Activate = torch.nn.ReLU()
 
     def forward(self, input):
@@ -180,20 +159,19 @@ for i in range(len(inputs)):
         currentEpoch += 1
         print(f"Epoch {currentEpoch}")
         epochAvgLoss = sum(epochLosses) / len(epochLosses)
-        loss_graph_values.append(epochAvgLoss)
+        # loss_graph_values.append(epochAvgLoss)
         print(f' Average Loss : {epochAvgLoss}')
         print(f' Learn Rate : {optimizer.param_groups[0]["lr"]}')
 
-        loss_graph_scatter = loss_graph_figure.data[0]
-        loss_graph_scatter.y = loss_graph_values
+        # loss_graph_scatter = loss_graph_figure.data[0]
+        # loss_graph_scatter.y = loss_graph_values
         loss_graph_figure.write_html("loss.html")
         optimizer.param_groups[0]['lr'] *= 0.95
 
         epochLosses = []
         if epochAvgLoss < bestLoss:
-            torch.save(model.state_dict(), 'model.pt')
+            torch.save(model.state_dict(), 'newmodel.pt')
             bestLoss = epochAvgLoss
-
 
 
     prediction = model(input[i])
@@ -203,6 +181,6 @@ for i in range(len(inputs)):
     optimizer.zero_grad()
     epochLosses.append(loss.item())
 
-    # print(
-    #     f"current loss at day {str(inputs[i][1])}/{str(inputs[i][2])}/{str(inputs[i][0] % 100)} at {str(inputs[i][3])}:{str(inputs[i][4])}, iteration {str(i)} loss: {str(loss.item())}, predicted: {str(prediction.item())}, actual: {str((output[i].item()))}")
-
+    loss_graph_values.append(loss.item())
+    loss_graph_scatter = loss_graph_figure.data[0]
+    loss_graph_scatter.y = loss_graph_values
