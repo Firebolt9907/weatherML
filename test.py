@@ -14,7 +14,7 @@ device = (
 )
 
 model = Model()
-model.load_state_dict(torch.load('data/newmodel.pt', map_location=torch.device(device)))
+model.load_state_dict(torch.load('data/model.pt', map_location=torch.device(device)))
 model.to(device)
 
 today = datetime.datetime.now()
