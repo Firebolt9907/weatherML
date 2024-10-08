@@ -1,17 +1,21 @@
 import json
-
 import torch
 import pandas as pd
 import re
 import plotly.graph_objects as go
-
 from model import Model
 
-LEARN_RATE = 5e-4 # 2e-3
-EPOCHS = 200  # 20
-DATA_PER_EPOCH = 50  # 500
-new = True
-filter = False
+EPOCHS = 50  # 200
+DATA_PER_EPOCH = 50  # 50
+NEW_MODEL = False
+CLEAN_DATA = True
+LR_SCALE = 0.95  # 0.95
+# new models need a higher learn rate
+if NEW_MODEL:
+    LEARN_RATE = 2e-3  # 2e-3
+else:
+    LEARN_RATE = 4e-4  # 2e-3
+
 
 device = (
     "cuda"
@@ -41,21 +45,17 @@ class useful:
 
     def removeS(inp):
         if isinstance(inp, str):
-            # Remove 's' characters
             inp = inp.replace("s", '')
-            # Use a regular expression to find a number
             match = re.search(r'[-+]?\d*\.\d+|[-+]?\d+', inp)
             if match:
-                # Convert the matched string to a float
                 return float(match.group())
             else:
                 print(inp)
                 raise ValueError("No valid number found in the input string")
         else:
-            # If it's not a string, directly convert to float
             return float(inp)
 
-if filter:
+if CLEAN_DATA:
     df = pd.read_csv('data/filtered.csv')
     og = pd.read_csv('data/weather.csv')
     filterDf = df.reset_index(
@@ -80,8 +80,9 @@ if filter:
                 useful.findRowDataFromInputs(day['year'], day['month'], day["day"], day["hour"], day["minute"], og).index[0]]
             expectedOutputs.append([useful.removeS(temp['HourlyDryBulbTemperature'])])
 
-        if i % 500 == 0 and i != 0:
-            print("Epoch " + str(i/50) + " cleaned")
+        if i % (DATA_PER_EPOCH * 10) == 0 and i != 0:
+            print("Epoch " + str(i/DATA_PER_EPOCH) + " cleaned")
+    del randomDf, filterDf, df, og
 else:
     inputs = json.load(open("data/inputs.json"))["stuff"]
     expectedOutputs = json.load(open("data/expectedoutputs.json"))["stuff"]
@@ -101,7 +102,7 @@ input = torch.FloatTensor(inputs).to(device)
 
 
 model = Model().to(device)
-if not new:
+if not NEW_MODEL:
     model.load_state_dict(torch.load(
         'data/model.pt', map_location=torch.device(device)))
     model.to(device)
@@ -109,7 +110,8 @@ if not new:
 loss_function = torch.nn.MSELoss(reduction='mean')
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARN_RATE)
 
-loss_graph_figure = go.Figure()
+loss_graph_figure = go.FigureWidget()
+# widget = go.FigureWidget(loss_graph_figure)
 loss_graph_values = []
 loss_graph_figure.add_scatter(y=loss_graph_values)
 loss_graph_figure.write_html("data/loss.html")
@@ -130,7 +132,8 @@ for i in range(len(inputs)):
         loss_graph_scatter = loss_graph_figure.data[0]
         loss_graph_scatter.y = loss_graph_values
         loss_graph_figure.write_html("data/loss.html")
-        optimizer.param_groups[0]['lr'] *= 0.95
+        optimizer.param_groups[0]['lr'] *= LR_SCALE
+
 
         epochLosses = []
         if epochAvgLoss < bestLoss:
